@@ -40,7 +40,6 @@ describe('Authenticate Use Case', ()=>{
   it('should not be able to authenticate with wrong email', async ()=> {
 
     await expect(()=>
-
         sut.execute({
         email: 'johndoe@example.com',
         password: '123456'

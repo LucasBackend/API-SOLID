@@ -32,6 +32,7 @@ export class RegisterUseCase{
   
     if (userWithSameEmail){
       throw new UserAlreadyExistsError()
+      
     }
    
     const user  = await this.usersRepository.create({
@@ -44,6 +45,7 @@ export class RegisterUseCase{
 
     return {
       user,
+      
     }
   
     
