@@ -1,11 +1,16 @@
-import { InvalidCredentialsError } from "@/error/invalid-credentials-error";
-import { CheckInsRepository } from "@/repositories/prisma/check-ins-repository"
+import { MaxDistanceError } from "@/error/max-distance-error";
+import { MaxNumberOfCheckInsError } from "@/error/max-number-of-check-ins-error";
+import { ResourceNotFoundError } from "@/error/resource-not-found-error";
+import { CheckInsRepository } from "@/repositories/prisma/check-ins-repository";
+import { GymsRepository } from "@/repositories/prisma/gyms-repository";
+import { getDistanceBetweenCoordinates } from "@/utils/get-distante0between-coordination";
 import { CheckIn } from "@prisma/client";
-import { compare } from "bcryptjs";
 
 interface CheckInUseCaseRequest{
   userId:string,
   gymId: string,
+  userLatitude: number,
+  userLongitude: number
 }
 
 interface CheckInUseCaseResponse {
@@ -15,9 +20,41 @@ interface CheckInUseCaseResponse {
 export class CheckInUseCase {
   constructor(
     private checkInsRepository: CheckInsRepository,
+    private gymsRepository: GymsRepository
   ){}
 
-  async execute({userId,gymId}:CheckInUseCaseRequest):Promise<CheckInUseCaseResponse>{
+  async execute({
+    userId,
+    gymId,
+    userLatitude,
+    userLongitude
+  }:CheckInUseCaseRequest):Promise<CheckInUseCaseResponse>{
+    const checkInOnSameDay = await this.checkInsRepository.findByUserIdOnDate(
+      userId,
+      new Date(),
+    )
+
+    if(checkInOnSameDay){
+      throw new MaxNumberOfCheckInsError()
+    }
+
+    const gym = await this.gymsRepository.findById(gymId)
+
+    if(!gym){
+      throw new ResourceNotFoundError()
+    }
+
+    const distance = getDistanceBetweenCoordinates(
+      {latitude: userLatitude, longitude: userLongitude},
+      {latitude: gym.latitude.toNumber(), longitude: gym.longitude.toNumber()}
+    )
+
+    const MAX_DISTANCE_IN_KILOMETERS =  0.1 
+
+    if( distance > MAX_DISTANCE_IN_KILOMETERS
+    ){
+      throw new MaxDistanceError()
+    }    
 
     const checkIn = await this.checkInsRepository.create({
       gym_id:gymId,

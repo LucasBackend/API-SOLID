@@ -1,18 +1,44 @@
-import {expect, describe, it, beforeEach} from 'vitest'
+import {expect, describe, it, beforeEach,vi,afterEach} from 'vitest'
 import { CheckInUseCase } from "./check-in"
-import { UserAlreadyExistsError } from '@/error/user-already-exists-error'
 import { InMemoryCheckInsRepository } from '@/repositories/in-memory/in-memory-check-in-repository'
+import { inMemoryGymsRepository } from '@/repositories/in-memory/in-memory-gyms-repository'
+import { Decimal } from '@prisma/client/runtime/library'
+import { MaxNumberOfCheckInsError } from '@/error/max-number-of-check-ins-error'
+import { MaxDistanceError } from '@/error/max-distance-error'
 
 let checkInsRepository: InMemoryCheckInsRepository
+let gymsRepository: inMemoryGymsRepository
 let sut:CheckInUseCase
 
 describe('Check-in Use Case', ()=>{
 
-    beforeEach(()=>{
+    beforeEach(async ()=>{
+     
+      checkInsRepository = new InMemoryCheckInsRepository();
+      gymsRepository = new inMemoryGymsRepository()
+      sut = new CheckInUseCase(checkInsRepository,gymsRepository);
 
-      checkInsRepository = new InMemoryCheckInsRepository()
-      sut = new CheckInUseCase(checkInsRepository)
+      vi.useFakeTimers()
 
+
+      await gymsRepository.create(
+        {
+          id: 'gym-01',
+          title: 'JavaScript Gym',
+          description: null,
+          phone: null,
+          latitude: 0,
+          longitude:0
+        }
+
+      )
+
+      
+
+    })
+
+    afterEach(()=>{
+      vi.useRealTimers()
     })
   
 
@@ -20,10 +46,82 @@ describe('Check-in Use Case', ()=>{
 
     const {checkIn} =  await sut.execute({
       gymId: 'gym-01',
-      userId: 'user-o1'
+      userId: 'user-o1',
+      userLatitude: 0,
+      userLongitude: 0,
     })
 
     expect(checkIn.id).toEqual(expect.any(String))
+
+
+  })
+
+  //APLICADO TDD TEST-DRIVEN DEVELOPMENT, O PADRÃO É SEMPRE RED,GREEN, REFACTORY => O RED É O PRIMEIRO ERRO, DEPOIS O TESTE PASSA NO GREEN E SÓ AI EU APLICO A FUNCIONALIDADE - OU SEJA DESENVOLVIMENTO DIRIJIDO POR TESTE (TDD)
+  it('should not be able to check in twice in the same day', async ()=> {
+
+    vi.setSystemTime(new Date(2022,0,20,8,0,0))
+
+    const {checkIn} =  await sut.execute({
+      gymId: 'gym-01',
+      userId: 'user-o1',
+      userLatitude:0,
+      userLongitude: 0
+    })
+
+    await expect(()=> sut.execute({
+      gymId: 'gym-01',
+      userId: 'user-o1',
+      userLatitude: 0,
+      userLongitude: 0
+    })).rejects.toBeInstanceOf(MaxNumberOfCheckInsError)
+
+
+  })
+
+  it('should not be able to check in twice but in different days', async ()=> {
+
+    vi.setSystemTime(new Date(2022,0,20,8,0,0))
+
+    await sut.execute({
+      gymId: 'gym-01',
+      userId: 'user-o1',
+      userLatitude:0,
+      userLongitude: 0,
+    })
+
+    vi.setSystemTime(new Date(2022,0,21,8,0,0))
+
+    const {checkIn} = await sut.execute({
+        gymId: 'gym-01',
+        userId: 'user-o1',
+        userLatitude:0,
+        userLongitude:0
+
+      })
+
+      expect(checkIn.id).toEqual(expect.any(String))
+  
+
+  })
+
+  it('should not be able able to check in on distant gym', async ()=> {
+    gymsRepository.items.push({
+      id: 'gym-02',
+      title: 'JavaScript Gym',
+      description: '',
+      phone: '',
+      latitude: new Decimal(-27.0747279),
+      longitude: new Decimal(-49.4889672),
+    })
+
+    await expect(()=>
+      sut.execute({
+        gymId: 'gym-02',
+        userId: 'user-o1',
+        userLatitude: -27.2092052,
+        userLongitude: -49.6401091,
+      }),
+    ).rejects.toBeInstanceOf(MaxDistanceError)
 
 
   })
