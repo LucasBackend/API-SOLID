@@ -1,7 +1,5 @@
-import {test} from 'vitest'
+import {test,expect} from 'vitest'
 
-
-test('ok',()=>{
-  
-
+test('testint',()=>{
+    expect(1+1).toEqual(2)
 })

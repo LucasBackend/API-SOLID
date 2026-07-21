@@ -1,7 +1,6 @@
 import { ResourceNotFoundError } from "@/error/resource-not-found-error";
 import { usersRepository } from "@/repositories/prisma/users-repository";
 import { User } from "@prisma/client";
-import { compare } from "bcryptjs";
 
 interface GetUserProfileUseCaseRequest{
   userID: string
