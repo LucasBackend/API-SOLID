@@ -18,13 +18,13 @@ function GenerateDataBaseUrl(schema:string){
 
 export default <Environment>{
   name:'prisma',
-  transformMode: 'ssr',
+  viteEnvironment: 'ssr',
   async setup(){
     const schema = randomUUID()
 
     const databaseUrl = GenerateDataBaseUrl(schema)
 
-    console.log(databaseUrl)
+    //console.log(databaseUrl)
 
     process.env.DATABASE_URL = databaseUrl
 
